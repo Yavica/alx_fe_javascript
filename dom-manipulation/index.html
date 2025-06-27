@@ -1,37 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dynamic Quote Generator</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Quote App</title>
+    <!-- Link to your CSS file -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles to ensure "Inter" font and some basic overrides */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
 </head>
-<body>
-  <div class="container">
-    <h1>Dynamic Quote Generator</h1>
+<body class="bg-gradient-to-r from-blue-400 to-purple-600 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-xl shadow-2xl max-w-lg w-full text-center border-b-8 border-purple-700 transform hover:scale-105 transition-transform duration-300 ease-in-out">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-800 mb-6 drop-shadow-md">Inspiring Quote</h1>
 
-    <div class="add-section">
-      <input id="newQuoteText" type="text" placeholder="Enter a new quote" />
-      <input id="newQuoteCategory" type="text" placeholder="Enter quote category" />
-      <button onclick="addQuote()">Add Quote</button>
+        <div class="relative mb-8 min-h-[120px] flex items-center justify-center">
+            <p id="quote-display" class="text-xl md:text-2xl italic text-gray-700 leading-relaxed transform hover:scale-102 transition-transform duration-200 ease-out">
+                "Click the button below to discover an inspiring quote!"
+            </p>
+        </div>
+
+        <p id="author-display" class="text-lg md:text-xl font-semibold text-purple-700 mb-8 border-t pt-4 border-gray-200"></p>
+
+        <button id="new-quote-btn" class="bg-purple-700 hover:bg-purple-800 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-purple-300">
+            Get New Quote
+        </button>
+
+        <div class="mt-8 pt-8 border-t border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4">Filter Quotes</h2>
+            <input type="text" id="filter-input" placeholder="Enter keyword to filter" class="w-full p-3 mb-4 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <button id="filter-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-300">
+                Apply Filter
+            </button>
+            <button id="clear-filter-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-gray-300 ml-2">
+                Clear Filter
+            </button>
+            <div id="filtered-quotes-list" class="mt-4 text-left text-gray-600 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                <!-- Filtered quotes will appear here -->
+            </div>
+        </div>
     </div>
 
-    <div class="filter-section">
-      <label for="categoryFilter">Filter by Category:</label>
-      <select id="categoryFilter" onchange="filterQuotes()">
-        <option value="all">All Categories</option>
-      </select>
-    </div>
-
-    <div id="quoteDisplay"></div>
-
-    <div class="file-section">
-      <button onclick="exportToJsonFile()">Export to JSON</button>
-      <input type="file" id="importFile" accept=".json" onchange="importFromJsonFile(event)" />
-      <button onclick="syncWithServer()">Sync with Server</button>
-    </div>
-  </div>
-
-  <script src="script.js"></script>
+    <!-- Link to your JavaScript file at the end of the body for better performance -->
+    <script src="script.js"></script>
 </body>
 </html>
