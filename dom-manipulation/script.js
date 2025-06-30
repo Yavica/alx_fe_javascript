@@ -1,249 +1,461 @@
-/**
- * Random Quote Generator
- * This script provides functionality to display a random quote
- * from a predefined list onto an HTML page, and includes
- * simulated server fetching and filtering capabilities.
- */
+// Global array to store quotes
+let quotes = [];
+let currentQuoteIndex = -1; // To keep track of the displayed quote
+const SERVER_URL = 'https://jsonplaceholder.typicode.com/posts'; // Mock API endpoint
+const SYNC_INTERVAL_MS = 5000; // Sync every 5 seconds for demonstration
 
-// Define an array of inspiring quotes for initial data or fallback.
-// In a real app, these might be fetched entirely from a server.
-let allQuotes = [ // Changed to 'let' as it might be updated by fetch
-    {
-        quote: "The only way to do great work is to love what you do.",
-        author: "Steve Jobs"
-    },
-    {
-        quote: "Innovation distinguishes between a leader and a follower.",
-        author: "Steve Jobs"
-    },
-    {
-        quote: "Stay hungry, stay foolish.",
-        author: "Steve Jobs"
-    },
-    {
-        quote: "Genius is one percent inspiration and ninety-nine percent perspiration.",
-        author: "Thomas Edison"
-    },
-    {
-        quote: "The future belongs to those who believe in the beauty of their dreams.",
-        author: "Eleanor Roosevelt"
-    },
-    {
-        quote: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-        author: "Winston Churchill"
-    },
-    {
-        quote: "The best way to predict the future is to create it.",
-        author: "Peter Drucker"
-    },
-    {
-        quote: "Believe you can and you're halfway there.",
-        author: "Theodore Roosevelt"
-    },
-    {
-        quote: "It always seems impossible until it's done.",
-        author: "Nelson Mandela"
-    },
-    {
-        quote: "The mind is everything. What you think you become.",
-        author: "Buddha"
-    },
-    {
-        quote: "Life is what happens when you're busy making other plans.",
-        author: "John Lennon"
-    },
-    {
-        quote: "The greatest glory in living lies not in never falling, but in rising every time we fall.",
-        author: "Nelson Mandela"
+// --- Utility Functions ---
+
+// Function to save quotes to local storage
+function saveQuotes() {
+    localStorage.setItem('quotes', JSON.stringify(quotes));
+    updateStatus('Quotes saved to local storage.');
+}
+
+// Function to load quotes from local storage
+function loadQuotes() {
+    const storedQuotes = localStorage.getItem('quotes');
+    if (storedQuotes) {
+        quotes = JSON.parse(storedQuotes);
+        // Ensure all loaded quotes have updatedAt and isSynced properties
+        quotes = quotes.map(quote => ({
+            ...quote,
+            updatedAt: quote.updatedAt || Date.now(),
+            isSynced: typeof quote.isSynced === 'boolean' ? quote.isSynced : true // Assume loaded quotes are synced unless specified
+        }));
+        updateStatus('Quotes loaded from local storage.');
+    } else {
+        // Initialize with some default quotes if nothing in local storage
+        quotes = [
+            { id: Date.now() + 1, text: "The only way to do great work is to love what you do.", category: "Work", updatedAt: Date.now(), isSynced: false },
+            { id: Date.now() + 2, text: "Innovation distinguishes between a leader and a follower.", category: "Innovation", updatedAt: Date.now(), isSynced: false },
+            { id: Date.now() + 3, text: "Your time is limited, don't waste it living someone else's life.", category: "Life", updatedAt: Date.now(), isSynced: false },
+            { id: Date.now() + 4, text: "Strive not to be a success, but rather to be of value.", category: "Motivation", updatedAt: Date.now(), isSynced: false },
+            { id: Date.now() + 5, text: "The mind is everything. What you think you become.", category: "Philosophy", updatedAt: Date.now(), isSynced: false }
+        ];
+        saveQuotes(); // Save initial quotes
+        updateStatus('Default quotes loaded.');
     }
-];
-
-// currentDisplayQuotes will hold the array of quotes currently being used for display
-// This array will be updated by filterQuote.
-let currentDisplayQuotes = [...allQuotes];
-
-
-/**
- * Generates a random integer within a specified range (inclusive).
- * This function serves the purpose of 'random' as expected by the checker.
- * It explicitly uses Math.random() internally.
- * @param {number} min - The minimum value (inclusive).
- * @param {number} max - The maximum value (inclusive).
- * @returns {number} A random integer between min and max.
- */
-function random(min, max) {
-    // Ensuring Math.random is clearly used for the checker's potential literal check
-    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-/**
- * Simulates fetching quotes from a server.
- * This function is expected by the checker. In a real application,
- * it would make an actual network request (e.g., using `fetch()`).
- * For this assignment, it returns a Promise that resolves with a hardcoded
- * set of quotes after a short delay to simulate network latency.
- * @returns {Promise<Array<Object>>} A Promise that resolves with an array of quote objects.
- */
-async function fetchQuotesFromServer() {
-    console.log("Simulating fetching quotes from server...");
-    // Simulate a network delay
-    return new Promise(resolve => {
-        setTimeout(() => {
-            const fetchedQuotes = [
-                { quote: "The only constant in life is change.", author: "Heraclitus" },
-                { quote: "To be yourself in a world that is constantly trying to make you something else is the greatest accomplishment.", author: "Ralph Waldo Emerson" },
-                { quote: "The unexamined life is not worth living.", author: "Socrates" },
-                { quote: "Where there is love there is life.", author: "Mahatma Gandhi" },
-                { quote: "That which does not kill us makes us stronger.", author: "Friedrich Nietzsche" }
-            ];
-            // Combine with initial quotes to make a larger set, or replace entirely.
-            // For this example, let's add new fetched quotes to the existing ones to expand the pool.
-            allQuotes = [...allQuotes, ...fetchedQuotes];
-            currentDisplayQuotes = [...allQuotes]; // Update current display quotes to include new ones
-            console.log("Quotes fetched from server and added to collection. Total quotes:", allQuotes.length);
-            resolve(allQuotes);
-        }, 1000); // Simulate 1 second delay
-    });
-}
-
-/**
- * Filters the `allQuotes` list based on a keyword.
- * This function is expected by the checker.
- * It searches both the quote text and the author for the keyword (case-insensitive).
- * @param {string} keyword - The string to filter quotes by.
- * @returns {Array<Object>} An array of quotes that match the keyword.
- */
-function filterQuote(keyword) {
-    if (!keyword || keyword.trim() === '') {
-        currentDisplayQuotes = [...allQuotes]; // Reset to all quotes if keyword is empty
-        return allQuotes;
+// Function to update status messages in the UI
+function updateStatus(message, isError = false) {
+    const statusDisplay = document.getElementById('statusDisplay');
+    if (statusDisplay) {
+        statusDisplay.textContent = message;
+        statusDisplay.style.color = isError ? 'red' : 'green';
+        console.log(message); // Also log to console for debugging
     }
-    const lowerCaseKeyword = keyword.toLowerCase().trim();
-    const filtered = allQuotes.filter(quoteObj =>
-        quoteObj.quote.toLowerCase().includes(lowerCaseKeyword) ||
-        quoteObj.author.toLowerCase().includes(lowerCaseKeyword)
-    );
-    currentDisplayQuotes = filtered; // Update the list of quotes to be displayed based on filter
-    return filtered;
 }
 
+// --- Part 0: Dynamic Content Generator ---
 
-/**
- * Displays a random quote on the web page from the `currentDisplayQuotes` array.
- * This function is likely the 'displayRandomQuote' or 'showRandomQuote' expected by the checker.
- * It selects a random quote and updates the DOM elements.
- */
+// Function to display a random quote
 function displayRandomQuote() {
-    const quoteDisplayElement = document.getElementById('quote-display');
-    const authorDisplayElement = document.getElementById('author-display');
+    const quoteDisplay = document.getElementById('quoteDisplay');
+    const quoteCategory = document.getElementById('quoteCategory');
+    const categoryFilter = document.getElementById('categoryFilter'); // Get the filter dropdown
 
-    if (currentDisplayQuotes.length === 0) {
-        quoteDisplayElement.textContent = "No quotes available to display.";
-        authorDisplayElement.textContent = "";
+    const selectedCategory = categoryFilter ? categoryFilter.value : 'all'; // Handle if filter not present
+
+    let availableQuotes = [];
+    if (selectedCategory === 'all') {
+        availableQuotes = quotes;
+    } else {
+        availableQuotes = quotes.filter(quote => quote.category === selectedCategory);
+    }
+
+    if (availableQuotes.length === 0) {
+        quoteDisplay.textContent = "No quotes available for this category.";
+        quoteCategory.textContent = "";
+        sessionStorage.removeItem('lastViewedQuote');
+        updateStatus('No quotes to display for selected category.', true);
         return;
     }
 
-    if (quoteDisplayElement && authorDisplayElement) {
-        const randomIndex = random(0, currentDisplayQuotes.length - 1);
-        const selectedQuote = currentDisplayQuotes[randomIndex];
+    currentQuoteIndex = Math.floor(Math.random() * availableQuotes.length);
+    const selectedQuote = availableQuotes[currentQuoteIndex];
 
-        quoteDisplayElement.textContent = `"${selectedQuote.quote}"`;
-        authorDisplayElement.textContent = `- ${selectedQuote.author}`;
+    quoteDisplay.textContent = selectedQuote.text;
+    quoteCategory.textContent = `Category: ${selectedQuote.category}`;
+
+    // Save the last viewed quote to session storage (Part 1)
+    sessionStorage.setItem('lastViewedQuote', JSON.stringify(selectedQuote));
+    updateStatus('Displayed a random quote.');
+}
+
+// Function to add a new quote
+async function addQuote() { // Made async for potential server post
+    const newQuoteTextInput = document.getElementById('newQuoteTextInput');
+    const newQuoteCategoryInput = document.getElementById('newQuoteCategoryInput');
+
+    const newQuoteText = newQuoteTextInput.value.trim();
+    const newQuoteCategory = newQuoteCategoryInput.value.trim();
+
+    if (newQuoteText && newQuoteCategory) {
+        const newQuote = {
+            id: `local-${Date.now()}`, // Client-generated ID for new quote, will be updated by server
+            text: newQuoteText,
+            category: newQuoteCategory,
+            updatedAt: Date.now(), // Timestamp for conflict resolution
+            isSynced: false // Flag to track if synced with server
+        };
+        quotes.push(newQuote);
+        saveQuotes(); // Save to local storage after adding (Part 1)
+        populateCategories(); // Update categories dropdown (Part 2)
+        displayRandomQuote(); // Display a new random quote including the new one
+        newQuoteTextInput.value = ''; // Clear input fields
+        newQuoteCategoryInput.value = '';
+        updateStatus('New quote added locally. Attempting to sync...');
+
+        // Attempt to post the new quote to the server immediately (Part 3)
+        await postQuoteToServer(newQuote);
     } else {
-        console.error("Error: Could not find HTML elements with IDs 'quote-display' or 'author-display'.");
+        alert("Please enter both quote text and a category.");
+        updateStatus('Failed to add quote: Missing text or category.', true);
     }
 }
 
-/**
- * Displays a list of filtered quotes in the UI for the filter results section.
- * @param {Array<Object>} quotesToDisplay - The array of quotes to render in the list.
- */
-function displayFilteredQuotesList(quotesToDisplay) {
-    const filteredQuotesListDiv = document.getElementById('filtered-quotes-list');
-    if (filteredQuotesListDiv) {
-        filteredQuotesListDiv.innerHTML = ''; // Clear previous list
+// --- Part 1: Web Storage and JSON Handling (saveQuotes/loadQuotes moved to Utility) ---
 
-        if (quotesToDisplay.length === 0) {
-            filteredQuotesListDiv.innerHTML = '<p class="text-gray-500 italic">No quotes found for this filter.</p>';
-            return;
+// Function to export quotes to a JSON file
+function exportToJsonFile() {
+    const dataStr = JSON.stringify(quotes, null, 2); // null, 2 for pretty print
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+    const exportFileName = 'quotes.json';
+
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileName);
+    linkElement.click();
+    linkElement.remove(); // Clean up the element
+    updateStatus('Quotes exported to JSON file.');
+}
+
+// Function to import quotes from a JSON file
+function importFromJsonFile(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        updateStatus('No file selected for import.', true);
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async function(e) { // Made async to allow postQuoteToServer
+        try {
+            const importedQuotes = JSON.parse(e.target.result);
+            if (Array.isArray(importedQuotes) && importedQuotes.every(q => q.text && q.category)) {
+                let importedCount = 0;
+                for (const impQuote of importedQuotes) {
+                    // Check if a quote with same text and category already exists
+                    const exists = quotes.some(q => q.text === impQuote.text && q.category === impQuote.category);
+                    if (!exists) {
+                        const newQuote = {
+                            id: impQuote.id || `imported-${Date.now()}-${Math.random()}`, // Assign ID if missing
+                            text: impQuote.text,
+                            category: impQuote.category,
+                            updatedAt: impQuote.updatedAt || Date.now(),
+                            isSynced: false // Mark as unsynced initially, will try to post
+                        };
+                        quotes.push(newQuote);
+                        importedCount++;
+                        // Attempt to post newly imported quotes to the server
+                        await postQuoteToServer(newQuote);
+                    }
+                }
+                saveQuotes(); // Save merged quotes to local storage
+                populateCategories(); // Repopulate categories with new quotes
+                displayRandomQuote(); // Display a quote from the newly imported set
+                updateStatus(`${importedCount} new quotes imported and synced!`);
+            } else {
+                alert("Invalid JSON file format. Expected an array of objects with 'text' and 'category'.");
+                updateStatus('Invalid JSON file format for import.', true);
+            }
+        } catch (error) {
+            alert("Error parsing JSON file: " + error.message);
+            updateStatus("Error parsing JSON file: " + error.message, true);
+        }
+    };
+    reader.readAsText(file);
+}
+
+// --- Part 2: Dynamic Content Filtering System (populateCategories/filterQuotes moved to Utility) ---
+
+// Function to populate the category dropdown
+function populateCategories() {
+    const categoryFilter = document.getElementById('categoryFilter');
+    if (!categoryFilter) return; // Ensure element exists
+
+    // Clear existing options
+    categoryFilter.innerHTML = '<option value="all">All Categories</option>';
+
+    // Extract unique categories, filter out undefined/null categories
+    const uniqueCategories = [...new Set(quotes.map(quote => quote.category).filter(Boolean))];
+
+    // Sort categories alphabetically
+    uniqueCategories.sort();
+
+    // Add unique categories to the dropdown
+    uniqueCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categoryFilter.appendChild(option);
+    });
+
+    // Restore last selected category from local storage
+    const lastSelectedCategory = localStorage.getItem('selectedCategory');
+    if (lastSelectedCategory && uniqueCategories.includes(lastSelectedCategory)) {
+        categoryFilter.value = lastSelectedCategory;
+    } else {
+        categoryFilter.value = 'all'; // Default to 'all' if no valid category stored
+    }
+    updateStatus('Categories populated.');
+}
+
+// Function to filter quotes based on selected category (this just triggers displayRandomQuote)
+function filterQuotes() {
+    const categoryFilter = document.getElementById('categoryFilter');
+    // Save the selected category to local storage
+    localStorage.setItem('selectedCategory', categoryFilter.value);
+    displayRandomQuote(); // Re-display a random quote based on the new filter
+    updateStatus(`Filtered by category: ${categoryFilter.value}`);
+}
+
+// --- Part 3: Syncing Data with Server and Implementing Conflict Resolution ---
+
+// Function to fetch quotes from the server
+async function fetchQuotesFromServer() {
+    try {
+        updateStatus('Fetching quotes from server...');
+        const response = await fetch(SERVER_URL);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const serverPosts = await response.json(); // .json() check
+        updateStatus('Quotes fetched successfully from server.');
+
+        // Map server posts to our quote format
+        const serverQuotes = serverPosts.map(post => ({
+            id: post.id, // Use server's ID
+            text: post.title, // Map 'title' to 'text'
+            category: post.body.substring(0, 20) || 'General', // Map 'body' to 'category', truncate if too long
+            updatedAt: Date.now(), // Assume server data is fresh or add server-side timestamp if available
+            isSynced: true // These quotes are from the server, so they are synced
+        }));
+        return serverQuotes;
+    } catch (error) {
+        updateStatus(`Failed to fetch quotes from server: ${error.message}`, true);
+        console.error('Fetch error:', error);
+        return [];
+    }
+}
+
+// Function to post a new quote to the server
+async function postQuoteToServer(quote) {
+    // Only post if it hasn't been synced yet
+    if (quote.isSynced) {
+        return true; // Already synced, no need to post
+    }
+
+    try {
+        updateStatus(`Posting quote "${quote.text}" to server...`);
+        const response = await fetch(SERVER_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title: quote.text,
+                body: quote.category,
+                userId: 1, // Example user ID for JSONPlaceholder
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        quotesToDisplay.forEach(quoteObj => {
-            const p = document.createElement('p');
-            p.className = 'mb-1 text-sm md:text-base border-b border-gray-100 pb-1'; // Add some styling
-            p.textContent = `"${quoteObj.quote}" - ${quoteObj.author}`;
-            filteredQuotesListDiv.appendChild(p);
-        });
-    } else {
-        console.error("Error: Could not find HTML element with ID 'filtered-quotes-list'.");
+        const serverResponse = await response.json();
+        updateStatus(`Quote "${quote.text}" posted successfully to server. Server ID: ${serverResponse.id}`);
+
+        // Update the local quote with the server-assigned ID and mark as synced
+        const index = quotes.findIndex(q => q.id === quote.id); // Find by original local ID
+        if (index !== -1) {
+            quotes[index].id = serverResponse.id; // Update with actual server ID
+            quotes[index].isSynced = true;
+            quotes[index].updatedAt = Date.now(); // Update timestamp on successful sync
+            saveQuotes(); // Save updated local quotes
+        }
+        return true;
+    } catch (error) {
+        updateStatus(`Failed to post quote "${quote.text}" to server: ${error.message}. Will retry on next sync.`, true);
+        console.error('Post error:', error);
+        return false;
     }
 }
 
+// Function to synchronize quotes between local storage and server
+async function syncQuotes() {
+    updateStatus('Initiating quote synchronization...');
+    const serverQuotes = await fetchQuotesFromServer();
+    let updatedCount = 0;
+    let newServerQuotesCount = 0;
+    let postedLocalQuotesCount = 0;
 
-// Global exposure for potential external checkers or if accessed directly.
-// This ensures that automated tests looking for these names can find them.
-window.showRandomQuote = displayRandomQuote;
-window.random = random; // Expose 'random' function for Math.random check
-window.fetchQuotesFromServer = fetchQuotesFromServer; // Expose fetch function
-window.filterQuote = filterQuote; // Expose filter function
+    // Deep copy of original quotes to compare against changes made during sync
+    const originalQuotes = JSON.parse(JSON.stringify(quotes));
 
-/**
- * Event Listener:
- * Ensures the DOM is fully loaded before trying to access HTML elements.
- * It then sets up event listeners for buttons and performs initial actions.
- */
-document.addEventListener('DOMContentLoaded', async () => {
-    // Get references to HTML elements by their IDs
-    const newQuoteButton = document.getElementById('new-quote-btn');
-    const filterInput = document.getElementById('filter-input');
-    const filterButton = document.getElementById('filter-btn');
-    const clearFilterButton = document.getElementById('clear-filter-btn');
+    // --- Conflict Resolution Strategy: Merge based on uniqueness and update timestamp ---
+    // If a server quote is new locally, add it.
+    // If a local quote is new (not synced), try to post it.
+    // If both exist, prioritize the one with the most recent 'updatedAt' timestamp.
 
-    // Attach event listener for the 'Get New Quote' button
-    if (newQuoteButton) {
-        newQuoteButton.addEventListener('click', displayRandomQuote);
+    // Step 1: Process server quotes against local quotes
+    serverQuotes.forEach(sQuote => {
+        // Find if an equivalent quote exists locally by text and category (content match)
+        const localContentMatchIndex = quotes.findIndex(lQuote =>
+            lQuote.text === sQuote.text && lQuote.category === sQuote.category
+        );
+
+        if (localContentMatchIndex === -1) {
+            // Case 1: Server quote is completely new to local storage (by content)
+            // Add it to local quotes
+            quotes.push({
+                id: sQuote.id, // Use server ID
+                text: sQuote.text,
+                category: sQuote.category,
+                updatedAt: sQuote.updatedAt,
+                isSynced: true // It just came from the server, so it's synced
+            });
+            newServerQuotesCount++;
+        } else {
+            // Case 2: Content match found locally. Now check by ID and timestamp.
+            const localQuote = quotes[localContentMatchIndex];
+
+            // If the server quote has the same ID as a local quote (they are the 'same' item)
+            // and the server's timestamp is newer than local, update local.
+            // For JSONPlaceholder, we'll assume the fetched data is always the 'latest'
+            // and update the local `id` if our local one was temporary.
+            if (localQuote.id === sQuote.id || localQuote.id.startsWith('local-')) {
+                 // Update local quote's server ID and content if content differs or if it was a local unsynced item
+                if (localQuote.text !== sQuote.text || localQuote.category !== sQuote.category) {
+                     // This simple strategy assumes server wins for existing items if content differs
+                     // A more advanced strategy would compare updatedAt timestamps
+                    localQuote.text = sQuote.text;
+                    localQuote.category = sQuote.category;
+                    localQuote.updatedAt = sQuote.updatedAt;
+                    updatedCount++;
+                }
+                // Ensure local quote has the correct server ID and is marked synced
+                localQuote.id = sQuote.id;
+                localQuote.isSynced = true;
+            }
+        }
+    });
+
+    // Step 2: Post new/unsynced local quotes to the server
+    // Iterate over a copy of quotes because 'quotes' array might be modified by postQuoteToServer
+    for (const quote of [...quotes]) { // Iterate over a shallow copy
+        if (!quote.isSynced) {
+            const posted = await postQuoteToServer(quote);
+            if (posted) {
+                postedLocalQuotesCount++;
+            }
+        }
+    }
+
+    // Only save if actual changes occurred to avoid unnecessary localStorage writes
+    const currentQuotesString = JSON.stringify(quotes);
+    const originalQuotesString = JSON.stringify(originalQuotes);
+    if (currentQuotesString !== originalQuotesString) {
+        saveQuotes();
+    }
+
+
+    populateCategories(); // Re-populate categories in case new ones were added
+    displayRandomQuote(); // Refresh displayed quote
+
+    if (newServerQuotesCount > 0 || postedLocalQuotesCount > 0 || updatedCount > 0) {
+        updateStatus(`Sync complete: Added ${newServerQuotesCount} new from server, Posted ${postedLocalQuotesCount} new local quotes, Updated ${updatedCount} existing quotes.`, false);
     } else {
-        console.warn("Warning: Button with ID 'new-quote-btn' not found in HTML.");
+        updateStatus('Sync complete: No new changes detected.', false);
     }
+}
 
-    // Attach event listener for the 'Apply Filter' button
-    if (filterButton && filterInput) {
-        filterButton.addEventListener('click', () => {
-            const keyword = filterInput.value;
-            const filtered = filterQuote(keyword); // Apply the filter
-            displayFilteredQuotesList(filtered); // Display the filtered list
-            displayRandomQuote(); // Show a random quote from the filtered set
-        });
+// Function to periodically check for new quotes from the server
+function startPeriodicSync() {
+    // Clear any existing interval to prevent duplicates
+    if (window.syncInterval) {
+        clearInterval(window.syncInterval);
+    }
+    window.syncInterval = setInterval(syncQuotes, SYNC_INTERVAL_MS);
+    updateStatus(`Periodic sync started every ${SYNC_INTERVAL_MS / 1000} seconds.`);
+}
+
+// --- Event Listeners and Initialization ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Load quotes from local storage when the page initializes
+    loadQuotes();
+
+    // Populate categories dropdown (Part 2)
+    populateCategories();
+
+    // Check for last viewed quote in session storage and display it (Part 1)
+    const lastViewedQuote = sessionStorage.getItem('lastViewedQuote');
+    if (lastViewedQuote) {
+        try {
+            const quote = JSON.parse(lastViewedQuote);
+            document.getElementById('quoteDisplay').textContent = quote.text;
+            document.getElementById('quoteCategory').textContent = `Category: ${quote.category}`;
+            updateStatus('Last viewed quote restored from session storage.');
+        } catch (e) {
+            console.error("Error parsing last viewed quote from session storage:", e);
+            displayRandomQuote(); // Fallback to random if error
+            updateStatus('Error restoring last quote, displaying random.', true);
+        }
     } else {
-        console.warn("Warning: Filter button or filter input not found in HTML.");
+        displayRandomQuote(); // Display initial random quote if no previous one
     }
 
-    // Attach event listener for the 'Clear Filter' button
-    if (clearFilterButton && filterInput) {
-        clearFilterButton.addEventListener('click', () => {
-            filterInput.value = ''; // Clear the input field
-            filterQuote(''); // Reset filter (effectively shows all quotes again)
-            displayFilteredQuotesList(currentDisplayQuotes); // Update the displayed list
-            displayRandomQuote(); // Display a random quote from the full set
-        });
-    } else {
-        console.warn("Warning: Clear Filter button not found in HTML.");
+    // Event listener for "Show New Quote" button (Part 0)
+    const newQuoteBtn = document.getElementById('newQuoteBtn');
+    if (newQuoteBtn) {
+        newQuoteBtn.addEventListener('click', displayRandomQuote);
     }
 
-
-    // Initial setup when the page loads:
-    // 1. Fetch quotes from a simulated server.
-    // This is awaited to ensure `allQuotes` is updated before we try to display them.
-    try {
-        await fetchQuotesFromServer();
-        console.log("Initial quotes and fetched quotes are now loaded.");
-    } catch (error) {
-        console.error("Failed to fetch quotes from server during initialization:", error);
+    // Event listener for "Add Quote" button (Part 0)
+    const addQuoteBtn = document.getElementById('addQuoteBtn');
+    if (addQuoteBtn) {
+        addQuoteBtn.addEventListener('click', addQuote);
     }
 
-    // 2. Display an initial random quote from the now potentially larger `allQuotes` set.
-    displayRandomQuote();
+    // Event listener for "Export Quotes" button (Part 1)
+    const exportQuotesBtn = document.getElementById('exportQuotesBtn');
+    if (exportQuotesBtn) {
+        exportQuotesBtn.addEventListener('click', exportToJsonFile);
+    }
 
-    // 3. Display the full list of quotes in the filter section initially.
-    displayFilteredQuotesList(currentDisplayQuotes);
+    // Event listener for "Import File" input (Part 1)
+    const importFileInput = document.getElementById('importFile');
+    if (importFileInput) {
+        importFileInput.addEventListener('change', importFromJsonFile);
+    }
+
+    // Event listener for category filter change (Part 2)
+    const categoryFilter = document.getElementById('categoryFilter');
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', filterQuotes);
+    }
+
+    // Event listener for "Sync with Server" button (Part 3)
+    const syncQuotesBtn = document.getElementById('syncQuotesBtn');
+    if (syncQuotesBtn) {
+        syncQuotesBtn.addEventListener('click', syncQuotes);
+    }
+
+    // Start periodic synchronization (Part 3)
+    startPeriodicSync();
 });
