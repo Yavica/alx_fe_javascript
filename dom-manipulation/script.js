@@ -118,6 +118,34 @@ async function addQuote() { // Made async for potential server post
     }
 }
 
+// NEW FUNCTION: Dynamically creates and injects the "Add New Quote" form
+function createAddQuoteForm() {
+    const formContainer = document.getElementById('addQuoteFormContainer');
+    if (!formContainer) {
+        console.error("Add quote form container not found in HTML.");
+        return;
+    }
+
+    const formHTML = `
+        <section class="add-quote-section">
+            <h2>Add New Quote</h2>
+            <div class="input-group">
+                <input type="text" id="newQuoteTextInput" placeholder="Enter new quote text" class="text-input">
+                <input type="text" id="newQuoteCategoryInput" placeholder="Enter quote category" class="text-input">
+                <button id="addQuoteBtn" class="btn success-btn">Add Quote</button>
+            </div>
+        </section>
+    `;
+    formContainer.innerHTML = formHTML;
+
+    // Attach event listener to the dynamically created button
+    const addQuoteBtn = document.getElementById('addQuoteBtn');
+    if (addQuoteBtn) {
+        addQuoteBtn.addEventListener('click', addQuote);
+    }
+    updateStatus('Add Quote form created dynamically.');
+}
+
 
 
 // --- Part 1: Web Storage and JSON Handling ---
@@ -187,6 +215,7 @@ function importFromJsonFile(event) {
     };
     reader.readAsText(file);
 }
+
 
 
 // --- Part 2: Dynamic Content Filtering System ---
@@ -411,6 +440,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load quotes from local storage when the page initializes
     loadQuotes();
 
+    // Dynamically create the add quote form (NEW CALL)
+    createAddQuoteForm();
+
     // Populate categories dropdown (Part 2)
     populateCategories();
 
@@ -435,12 +467,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const newQuoteBtn = document.getElementById('newQuoteBtn');
     if (newQuoteBtn) {
         newQuoteBtn.addEventListener('click', showRandomQuote);
-    }
-
-    // Event listener for "Add Quote" button (Part 0)
-    const addQuoteBtn = document.getElementById('addQuoteBtn');
-    if (addQuoteBtn) {
-        addQuoteBtn.addEventListener('click', addQuote);
     }
 
     // Event listener for "Export Quotes" button (Part 1)
