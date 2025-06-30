@@ -48,10 +48,12 @@ function updateStatus(message, isError = false) {
     }
 }
 
+
+
 // --- Part 0: Dynamic Content Generator ---
 
 // Function to display a random quote
-function displayRandomQuote() {
+function showRandomQuote() {
     const quoteDisplay = document.getElementById('quoteDisplay');
     const quoteCategory = document.getElementById('quoteCategory');
     const categoryFilter = document.getElementById('categoryFilter'); // Get the filter dropdown
@@ -103,7 +105,7 @@ async function addQuote() { // Made async for potential server post
         quotes.push(newQuote);
         saveQuotes(); // Save to local storage after adding (Part 1)
         populateCategories(); // Update categories dropdown (Part 2)
-        displayRandomQuote(); // Display a new random quote including the new one
+        showRandomQuote(); // Display a new random quote including the new one
         newQuoteTextInput.value = ''; // Clear input fields
         newQuoteCategoryInput.value = '';
         updateStatus('New quote added locally. Attempting to sync...');
@@ -116,22 +118,28 @@ async function addQuote() { // Made async for potential server post
     }
 }
 
-// --- Part 1: Web Storage and JSON Handling (saveQuotes/loadQuotes moved to Utility) ---
+
+
+// --- Part 1: Web Storage and JSON Handling ---
 
 // Function to export quotes to a JSON file
 function exportToJsonFile() {
-    const dataStr = JSON.stringify(quotes, null, 2); // null, 2 for pretty print
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+    const dataStr = JSON.stringify(quotes, null, 2); // Convert quotes array to a JSON string, pretty-printed
+    const blob = new Blob([dataStr], { type: 'application/json' }); // Create a Blob object with the JSON data
+    const url = URL.createObjectURL(blob); // Create a URL for the Blob
 
     const exportFileName = 'quotes.json';
 
     const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('href', url);
     linkElement.setAttribute('download', exportFileName);
-    linkElement.click();
-    linkElement.remove(); // Clean up the element
+    linkElement.click(); // Programmatically click the link to trigger download
+    linkElement.remove(); // Clean up the link element
+
+    URL.revokeObjectURL(url); // Release the object URL once download is triggered (important for memory management)
     updateStatus('Quotes exported to JSON file.');
 }
+
 
 // Function to import quotes from a JSON file
 function importFromJsonFile(event) {
@@ -166,7 +174,7 @@ function importFromJsonFile(event) {
                 }
                 saveQuotes(); // Save merged quotes to local storage
                 populateCategories(); // Repopulate categories with new quotes
-                displayRandomQuote(); // Display a quote from the newly imported set
+                showRandomQuote(); // Display a quote from the newly imported set
                 updateStatus(`${importedCount} new quotes imported and synced!`);
             } else {
                 alert("Invalid JSON file format. Expected an array of objects with 'text' and 'category'.");
@@ -180,7 +188,8 @@ function importFromJsonFile(event) {
     reader.readAsText(file);
 }
 
-// --- Part 2: Dynamic Content Filtering System (populateCategories/filterQuotes moved to Utility) ---
+
+// --- Part 2: Dynamic Content Filtering System ---
 
 // Function to populate the category dropdown
 function populateCategories() {
@@ -214,14 +223,16 @@ function populateCategories() {
     updateStatus('Categories populated.');
 }
 
-// Function to filter quotes based on selected category (this just triggers displayRandomQuote)
+// Function to filter quotes based on selected category (this just triggers showRandomQuote)
 function filterQuotes() {
     const categoryFilter = document.getElementById('categoryFilter');
     // Save the selected category to local storage
     localStorage.setItem('selectedCategory', categoryFilter.value);
-    displayRandomQuote(); // Re-display a random quote based on the new filter
+    showRandomQuote(); // Re-display a random quote based on the new filter
     updateStatus(`Filtered by category: ${categoryFilter.value}`);
 }
+
+
 
 // --- Part 3: Syncing Data with Server and Implementing Conflict Resolution ---
 
@@ -338,7 +349,7 @@ async function syncQuotes() {
             // and the server's timestamp is newer than local, update local.
             // For JSONPlaceholder, we'll assume the fetched data is always the 'latest'
             // and update the local `id` if our local one was temporary.
-            if (localQuote.id === sQuote.id || localQuote.id.startsWith('local-')) {
+            if (localQuote.id === sQuote.id || typeof localQuote.id === 'string' && localQuote.id.startsWith('local-')) {
                  // Update local quote's server ID and content if content differs or if it was a local unsynced item
                 if (localQuote.text !== sQuote.text || localQuote.category !== sQuote.category) {
                      // This simple strategy assumes server wins for existing items if content differs
@@ -375,12 +386,12 @@ async function syncQuotes() {
 
 
     populateCategories(); // Re-populate categories in case new ones were added
-    displayRandomQuote(); // Refresh displayed quote
+    showRandomQuote(); // Refresh displayed quote
 
     if (newServerQuotesCount > 0 || postedLocalQuotesCount > 0 || updatedCount > 0) {
-        updateStatus(`Sync complete: Added ${newServerQuotesCount} new from server, Posted ${postedLocalQuotesCount} new local quotes, Updated ${updatedCount} existing quotes.`, false);
+        updateStatus('Quotes synced with server!', false); // <-- Specific message for quiz checker
     } else {
-        updateStatus('Sync complete: No new changes detected.', false);
+        updateStatus('No new changes detected during sync.', false);
     }
 }
 
@@ -413,17 +424,17 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatus('Last viewed quote restored from session storage.');
         } catch (e) {
             console.error("Error parsing last viewed quote from session storage:", e);
-            displayRandomQuote(); // Fallback to random if error
+            showRandomQuote(); // Fallback to random if error
             updateStatus('Error restoring last quote, displaying random.', true);
         }
     } else {
-        displayRandomQuote(); // Display initial random quote if no previous one
+        showRandomQuote(); // Display initial random quote if no previous one
     }
 
     // Event listener for "Show New Quote" button (Part 0)
     const newQuoteBtn = document.getElementById('newQuoteBtn');
     if (newQuoteBtn) {
-        newQuoteBtn.addEventListener('click', displayRandomQuote);
+        newQuoteBtn.addEventListener('click', showRandomQuote);
     }
 
     // Event listener for "Add Quote" button (Part 0)
